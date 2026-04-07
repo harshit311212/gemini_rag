@@ -65,12 +65,16 @@ Instructions:
 def get_chroma_collection():
     try:
         if not os.path.exists("./chroma_db"):
-            st.info("First run detected: Parsing document and building the knowledge base using Gemini 1.5. This might take a minute...")
+            st.info("First run detected: Parsing document and building the knowledge base using Gemini 2.0 Flash. This might take a minute...")
             import subprocess
+            import sys
             try:
-                subprocess.run(["python", "ingest.py"], check=True)
+                result = subprocess.run([sys.executable, "ingest.py"], capture_output=True, text=True)
+                if result.returncode != 0:
+                    st.error(f"Failed to process document: {result.stderr}")
+                    return None
                 st.success("Knowledge base built successfully!")
-            except subprocess.CalledProcessError as e:
+            except Exception as e:
                 st.error(f"Failed to process document: {e}")
                 return None
         chroma_client = chromadb.PersistentClient(path="./chroma_db")
@@ -127,7 +131,7 @@ if user_query:
                 formatted_prompt = system_prompt_template.format(retrieved_context=retrieved_context)
                 
                 groq_response = groq_client.chat.completions.create(
-                    model="llama3-70b-8192",
+                    model="llama-3.3-70b-versatile",
                     messages=[
                         {"role": "system", "content": formatted_prompt},
                         {"role": "user", "content": f"User Question: {user_query}"}

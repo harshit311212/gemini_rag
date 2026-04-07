@@ -7,6 +7,7 @@ except ImportError:
 
 import os
 import io
+import time
 import fitz  # PyMuPDF
 from PIL import Image
 import chromadb
@@ -70,22 +71,34 @@ def extract_content_from_pdf(pdf_path):
                     "type": "image",
                     "content": f"Image Description: {summary}"
                 })
+            # Brief pause between API calls to respect free-tier rate limits
+            time.sleep(5)
                 
     return chunks
 
 def summarize_image(image: Image.Image, page_num: int) -> str:
-    print(f"Summarizing an image on page {page_num} using Gemini 1.5 Flash...")
+    print(f"Summarizing an image on page {page_num} using Gemini 2.0 Flash...")
     prompt = "Describe this image in detail. If it is a chart or dashboard, summarize the key data points or visual elements. If it contains text, accurately transcribe the text. Provide a comprehensive summary useful for answering questions about it."
     
-    try:
-        response = client.models.generate_content(
-            model='gemini-1.5-flash',
-            contents=[prompt, image]
-        )
-        return response.text.strip()
-    except Exception as e:
-        print(f"Error summarizing image: {e}")
-        return ""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=[prompt, image]
+            )
+            return response.text.strip()
+        except Exception as e:
+            error_str = str(e)
+            if '429' in error_str or 'RESOURCE_EXHAUSTED' in error_str:
+                wait_time = 40 * (attempt + 1)  # 40s, 80s, 120s
+                print(f"  Rate limit hit. Waiting {wait_time}s before retry {attempt + 1}/{max_retries}...")
+                time.sleep(wait_time)
+            else:
+                print(f"Error summarizing image: {e}")
+                return ""
+    print(f"Failed to summarize image after {max_retries} retries.")
+    return ""
 
 def create_vector_db(chunks, db_path="./chroma_db", collection_name="dp600_rag"):
     print(f"Initializing ChromaDB at {db_path}...")

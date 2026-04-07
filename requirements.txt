@@ -5,3 +5,4 @@ chromadb
 streamlit
 python-dotenv
 pillow
+pysqlite3-binary
