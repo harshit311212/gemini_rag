@@ -1,3 +1,7 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import os
 import streamlit as st
 import chromadb
@@ -13,15 +17,30 @@ st.set_page_config(page_title="Data Bear DP-600 RAG", page_icon="🤖", layout="
 st.title("Data Bear DP-600 Multimodal RAG Assistant")
 
 gemini_api_key = os.getenv("GEMINI_API_KEY")
+if not gemini_api_key:
+    try:
+        gemini_api_key = st.secrets["GEMINI_API_KEY"]
+    except (KeyError, FileNotFoundError):
+        pass
+
 groq_api_key = os.getenv("GROQ_API_KEY")
+if not groq_api_key:
+    try:
+        groq_api_key = st.secrets["GROQ_API_KEY"]
+    except (KeyError, FileNotFoundError):
+        pass
 
 if not gemini_api_key or not groq_api_key:
-    st.error("⚠️ **API Keys Missing!** Please ensure `GEMINI_API_KEY` and `GROQ_API_KEY` are set in your `.env` file.")
+    st.error("⚠️ **API Keys Missing!** Please ensure `GEMINI_API_KEY` and `GROQ_API_KEY` are set in your `.env` file locally or in **Streamlit Advanced Settings -> Secrets** for cloud deployment.")
     st.stop()
+
+# Ensure keys are in os.environ for subprocesses like ingest.py
+os.environ["GEMINI_API_KEY"] = gemini_api_key
+os.environ["GROQ_API_KEY"] = groq_api_key
 
 # Initialize API Clients
 try:
-    gemini_client = genai.Client()
+    gemini_client = genai.Client(api_key=gemini_api_key)
     groq_client = Groq(api_key=groq_api_key)
 except Exception as e:
     st.error(f"Error initializing API clients: {e}")
