@@ -65,7 +65,7 @@ Instructions:
 def get_chroma_collection():
     try:
         if not os.path.exists("./chroma_db"):
-            st.info("First run detected: Parsing document and building the knowledge base using Gemini 2.0 Flash. This might take a minute...")
+            st.info("First run detected: Parsing document and building the knowledge base. This might take a minute...")
             import subprocess
             import sys
             try:
@@ -111,6 +111,8 @@ if user_query:
                     model='gemini-embedding-2-preview',
                     contents=user_query
                 )
+                if not response.embeddings:
+                    raise ValueError("Query embedding returned empty response from API.")
                 query_embedding = response.embeddings[0].values
                 
                 # 2. Retrieve top K chunks from Chroma
